@@ -1,0 +1,14 @@
+simulator ideas: [04/12/2021]
+Use optparse not within the simulator, but in the script that calls the simulator
+(https://www.r-bloggers.com/2015/09/passing-arguments-to-an-r-script-from-command-lines/)
+
+- use future_lapply
+- check the random number generation after
+- allow shuffling of the order of which paramMat's are run (this isn't too hard -- just shuffle and reshuffle back at the end)
+- automatically append the elapsed time
+- make a scheduler (trial and row) that the simulator loops trhough
+
+suggestion from https://rstudio.github.io/promises/articles/futures.html
+- use multisession
+- explicitly load the variables and packages into the child processes
+- how to handle scenario where the inner function uses parallelization also...? see https://cran.r-project.org/web/packages/future/vignettes/future-3-topologies.html
