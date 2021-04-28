@@ -1,4 +1,4 @@
 library(testthat)
-library(simulator)
+library(customSimulator)
 
-test_check("simulator")
+test_check("customSimulator")

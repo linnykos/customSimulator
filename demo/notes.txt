@@ -12,3 +12,9 @@ suggestion from https://rstudio.github.io/promises/articles/futures.html
 - use multisession
 - explicitly load the variables and packages into the child processes
 - how to handle scenario where the inner function uses parallelization also...? see https://cran.r-project.org/web/packages/future/vignettes/future-3-topologies.html
+
+======
+
+things to add:
+- there might be additional variables one needs to pass into multisession
+
