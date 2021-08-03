@@ -35,8 +35,8 @@
 #' is a vector containing unique integers ranging within \code{1:nrow(df_param)}
 #' @param chunking_num integer, where if \code{!is.na(chunking_num)}, dictatees how many
 #' intermediary files are saved during the simulation
-#' @param required_packages packages to load into the multisession if
-#' \code{cores>1}
+#' @param required_packages a vector of characters representing packages to load into the multisession if
+#' \code{cores>1}. See documentation in \url{https://cran.r-project.org/web/packages/future.apply/future.apply.pdf}
 #' @param filepath string
 #' @param verbose boolean
 #'
