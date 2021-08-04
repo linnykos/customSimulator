@@ -12,7 +12,9 @@ Imports:
     Matrix,
     MASS,
     future.apply,
-    future
+    future,
+    progressr,
+    pbapply
 Suggests:
     testthat
 RoxygenNote: 7.1.1

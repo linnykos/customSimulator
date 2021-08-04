@@ -51,6 +51,7 @@ simulator <- function(rule, criterion, df_param,
 
   # construct the scheduler
   df_schedule <- .construct_scheduler(nrow(df_param), ntrials, specific_trials)
+  pb <- function(){invisible()}
 
   # if shuffling is used, shuffle the scheduler
   if(!all(is.na(shuffle_group))){
@@ -75,20 +76,20 @@ simulator <- function(rule, criterion, df_param,
 
   # function for each trial and row of df_param
   # the random seed is handled by future.seed in future_lapply
-  fun <- function(i){
+  fun <- function(i, df_schedule, rule, criterion, pb, ...){
     x <- df_schedule$row[i]
     y <- df_schedule$trial[i]
     set.seed(y)
 
     tryCatch({
-      dat <- rule(df_param[x,])
+      if(verbose) pb()
+      dat <- rule(df_param[x,], ...)
       start_time <- proc.time()
-      res <- criterion(dat, df_param[x,], y)
+      res <- criterion(dat, df_param[x,], y, ...)
       end_time <- proc.time()
 
       res <- list(result = res)
-      res$start_time <- start_time
-      res$end_time <- end_time
+      res$elapsed_time <- end_time-start_time
       res
     }, error = function(e){
       NA
@@ -102,17 +103,25 @@ simulator <- function(rule, criterion, df_param,
     if(verbose) cat(paste0("\n", Sys.time(), ": Chunk ", k, " of ", length(chunking_list), " started!\n"))
 
     if(cores > 1){
+      # set up progress bar
+      if(verbose & cores > 1){
+        progressr::handlers(global = T)
+        pb <- progressr::progressor(along = chunking_list[[k]])
+      }
+
       # parallel version
       res_tmp <- future.apply::future_lapply(chunking_list[[k]], function(i){
-        fun(i)
+        fun(i, df_schedule, rule, criterion, pb)
       }, future.globals = list(rule = rule, criterion = criterion,
-                               df_param = df_param, df_schedule = df_schedule),
+                               df_param = df_param, df_schedule = df_schedule,
+                               verbose = verbose),
       future.packages = required_packages, future.seed = TRUE)
 
     } else {
       # sequential version
-      res_tmp <- lapply(chunking_list[[k]], function(i){
-        fun(i)
+      if(verbose) pbapply::pboptions(type = "timer") else pbapply::pboptions(type = "none")
+      res_tmp <- pbapply::pblapply(chunking_list[[k]], function(i){
+        fun(i, df_schedule, rule, criterion, pb)
       })
     }
 
@@ -133,6 +142,9 @@ simulator <- function(rule, criterion, df_param,
 
   # close the parallel backend
   if(cores > 1) future::plan(future::sequential)
+  if(verbose){
+    progressr::handlers(global = F)
+  }
 
   names(res_all) <- paste0("row_", 1:length(res_all))
   res_all
