@@ -47,6 +47,7 @@ simulator <- function(generator, executor, df_param,
                       ntrials = 10, specific_trials = NA, cores = 1,
                       shuffle_group = NA, chunking_num = nrow(df_param),
                       required_packages = NULL,
+                      worker_variables = NA,
                       filepath = NA, verbose = T, ...){
   stopifnot(is.data.frame(df_param), is.numeric(cores), cores > 0)
 
@@ -77,16 +78,16 @@ simulator <- function(generator, executor, df_param,
 
   # function for each trial and row of df_param
   # the random seed is handled by future.seed in future_lapply
-  fun <- function(i, df_schedule, generator, executor, pb, ...){
+  fun <- function(i, df_schedule, generator, executor, worker_variables, pb){
     x <- df_schedule$row[i]
     y <- df_schedule$trial[i]
     set.seed(y)
 
     tryCatch({
       if(verbose) pb()
-      dat <- generator(df_param[x,], ...)
+      dat <- generator(df_param[x,], worker_variables)
       start_time <- proc.time()
-      res <- executor(dat, df_param[x,], y, ...)
+      res <- executor(dat, df_param[x,], y, worker_variables)
       end_time <- proc.time()
 
       res <- list(result = res)
@@ -112,17 +113,18 @@ simulator <- function(generator, executor, df_param,
 
       # parallel version
       res_tmp <- future.apply::future_lapply(chunking_list[[k]], function(i){
-        fun(i, df_schedule, generator, executor, pb, ...)
+        fun(i, df_schedule, generator, executor, worker_variables, pb)
       }, future.globals = list(generator = generator, executor = executor,
                                df_param = df_param, df_schedule = df_schedule,
-                               pb = pb, verbose = verbose, ...),
+                               worker_variables = worker_variables,
+                               pb = pb, verbose = verbose),
       future.packages = required_packages, future.seed = TRUE)
 
     } else {
       # sequential version
       if(verbose) pbapply::pboptions(type = "timer") else pbapply::pboptions(type = "none")
       res_tmp <- pbapply::pblapply(chunking_list[[k]], function(i){
-        fun(i, df_schedule, generator, executor, pb, ...)
+        fun(i, df_schedule, generator, executor, worker_variables, pb)
       })
     }
 

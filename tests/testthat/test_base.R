@@ -135,11 +135,11 @@ test_that(".split_rows works when there isn't evenly-split", {
 ## simulator is correct
 
 test_that("simulator works without parallelization", {
-  generator <- function(vec, ...){
+  generator <- function(vec, worker_variables){
     stats::rnorm(100, mean = vec[1])
   }
 
-  executor <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, worker_variables){
     c(mean(dat), stats::sd(dat))
   }
 
@@ -165,11 +165,11 @@ test_that("simulator works without parallelization", {
 })
 
 test_that("simulator works with parallelization", {
-  generator <- function(vec, ...){
+  generator <- function(vec, worker_variables){
     stats::rnorm(100, mean = vec[1])
   }
 
-  executor <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, worker_variables){
     c(mean(dat), stats::sd(dat))
   }
 
@@ -195,13 +195,13 @@ test_that("simulator works with parallelization", {
 })
 
 test_that("simulator can be reproducable with parallelization", {
-  generator <- function(vec, ...){
+  generator <- function(vec, worker_variables){
     mat <- matrix(rnorm(50^2), 50, 50)
     mat <- crossprod(mat)
     mat
   }
 
-  executor <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, worker_variables){
     tmp <- eigen(dat)
     tmp$values[sample(1:50, size = 1)]
   }
@@ -246,12 +246,12 @@ test_that("simulator can be reproducable with parallelization", {
 })
 
 test_that("simulation_generator works for errors", {
-  generator1 <- function(vec, ...){
+  generator1 <- function(vec, worker_variables){
     if(vec[1] == 2) stop()
     stats::rnorm(100, mean = vec[1])
   }
 
-  executor <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, worker_variables){
     c(mean(dat), stats::sd(dat))
   }
 
@@ -285,11 +285,11 @@ test_that("simulation_generator works for errors", {
 })
 
 test_that("simulation_generator can save", {
-  generator <- function(vec, ...){
+  generator <- function(vec, worker_variables){
     stats::rnorm(100, mean = vec[1])
   }
 
-  executor <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, worker_variables){
     c(mean(dat), stats::sd(dat))
   }
 
