@@ -135,11 +135,11 @@ test_that(".split_rows works when there isn't evenly-split", {
 ## simulator is correct
 
 test_that("simulator works without parallelization", {
-  rule <- function(vec, ...){
+  generator <- function(vec, ...){
     stats::rnorm(100, mean = vec[1])
   }
 
-  criterion <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, ...){
     c(mean(dat), stats::sd(dat))
   }
 
@@ -147,7 +147,7 @@ test_that("simulator works without parallelization", {
   df_param <- as.data.frame(matrix(1:len, nrow = len))
 
   ntrials <- 10
-  res <- simulator(rule, criterion, df_param, ntrials = ntrials,
+  res <- simulator(generator, executor, df_param, ntrials = ntrials,
                    specific_trials = NA, cores = 1, shuffle_group = NA,
                    filepath = NA, verbose = F)
 
@@ -158,18 +158,18 @@ test_that("simulator works without parallelization", {
   for(i in 1:length(res)){
     expect_true(all(sort(names(res[[i]])) == sort(paste0("trial_", 1:ntrials))))
     for(j in 1:ntrials){
-      expect_true(all(sort(names(res[[i]][[j]])) == sort(c("result", "start_time", "end_time"))))
+      expect_true(all(sort(names(res[[i]][[j]])) == sort(c("result", "elapsed_time"))))
       expect_true(length(res[[i]][[j]]$result) == 2)
     }
   }
 })
 
 test_that("simulator works with parallelization", {
-  rule <- function(vec, ...){
+  generator <- function(vec, ...){
     stats::rnorm(100, mean = vec[1])
   }
 
-  criterion <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, ...){
     c(mean(dat), stats::sd(dat))
   }
 
@@ -177,7 +177,7 @@ test_that("simulator works with parallelization", {
   df_param <- as.data.frame(matrix(1:len, nrow = len))
 
   ntrials <- 10
-  res <- simulator(rule, criterion, df_param, ntrials = ntrials,
+  res <- simulator(generator, executor, df_param, ntrials = ntrials,
                    specific_trials = NA, cores = 2, shuffle_group = NA,
                    filepath = NA, verbose = F)
 
@@ -188,20 +188,20 @@ test_that("simulator works with parallelization", {
   for(i in 1:length(res)){
     expect_true(all(sort(names(res[[i]])) == sort(paste0("trial_", 1:ntrials))))
     for(j in 1:ntrials){
-      expect_true(all(sort(names(res[[i]][[j]])) == sort(c("result", "start_time", "end_time"))))
+      expect_true(all(sort(names(res[[i]][[j]])) == sort(c("result", "elapsed_time"))))
       expect_true(length(res[[i]][[j]]$result) == 2)
     }
   }
 })
 
 test_that("simulator can be reproducable with parallelization", {
-  rule <- function(vec, ...){
+  generator <- function(vec, ...){
     mat <- matrix(rnorm(50^2), 50, 50)
     mat <- crossprod(mat)
     mat
   }
 
-  criterion <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, ...){
     tmp <- eigen(dat)
     tmp$values[sample(1:50, size = 1)]
   }
@@ -210,13 +210,13 @@ test_that("simulator can be reproducable with parallelization", {
   df_param <- as.data.frame(matrix(1:len, nrow = len))
 
   ntrials <- 10
-  res1 <- simulator(rule, criterion, df_param, ntrials = ntrials,
+  res1 <- simulator(generator, executor, df_param, ntrials = ntrials,
                    specific_trials = NA, cores = 2, shuffle_group = NA,
                    filepath = NA, verbose = F)
-  res2 <- simulator(rule, criterion, df_param, ntrials = ntrials,
+  res2 <- simulator(generator, executor, df_param, ntrials = ntrials,
                     specific_trials = NA, cores = 2, shuffle_group = NA,
                     filepath = NA, verbose = F)
-  res3 <- simulator(rule, criterion, df_param, ntrials = ntrials,
+  res3 <- simulator(generator, executor, df_param, ntrials = ntrials,
                     specific_trials = NA, cores = 2, shuffle_group = list(1:6),
                     filepath = NA, verbose = F)
 
@@ -227,13 +227,13 @@ test_that("simulator can be reproducable with parallelization", {
     }
   }
 
-  res1 <- simulator(rule, criterion, df_param, ntrials = NA,
+  res1 <- simulator(generator, executor, df_param, ntrials = NA,
                     specific_trials = c(10:14), cores = 2, shuffle_group = NA,
                     filepath = NA, verbose = F)
-  res2 <- simulator(rule, criterion, df_param, ntrials = NA,
+  res2 <- simulator(generator, executor, df_param, ntrials = NA,
                     specific_trials = c(10:14), cores = 2, shuffle_group = NA,
                     filepath = NA, verbose = F)
-  res3 <- simulator(rule, criterion, df_param, ntrials = NA,
+  res3 <- simulator(generator, executor, df_param, ntrials = NA,
                     specific_trials = c(10:14), cores = 2, shuffle_group = list(1:6),
                     filepath = NA, verbose = F)
 
@@ -246,12 +246,12 @@ test_that("simulator can be reproducable with parallelization", {
 })
 
 test_that("simulation_generator works for errors", {
-  rule1 <- function(vec, ...){
+  generator1 <- function(vec, ...){
     if(vec[1] == 2) stop()
     stats::rnorm(100, mean = vec[1])
   }
 
-  criterion <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, ...){
     c(mean(dat), stats::sd(dat))
   }
 
@@ -259,16 +259,16 @@ test_that("simulation_generator works for errors", {
   df_param <- as.data.frame(matrix(1:len, nrow = len))
 
   ntrials <- 4
-  res1 <- simulator(rule1, criterion, df_param, ntrials = ntrials,
+  res1 <- simulator(generator1, executor, df_param, ntrials = ntrials,
                    specific_trials = NA, cores = 2, shuffle_group = NA,
                    filepath = NA, verbose = F)
 
   ##
 
-  rule2 <- function(vec, ...){
+  generator2 <- function(vec, ...){
     stats::rnorm(100, mean = vec[1])
   }
-  res2 <- simulator(rule2, criterion, df_param, ntrials = ntrials,
+  res2 <- simulator(generator2, executor, df_param, ntrials = ntrials,
                    specific_trials = NA, cores = 2, shuffle_group = NA,
                    filepath = NA, verbose = F)
 
@@ -285,11 +285,11 @@ test_that("simulation_generator works for errors", {
 })
 
 test_that("simulation_generator can save", {
-  rule <- function(vec, ...){
+  generator <- function(vec, ...){
     stats::rnorm(100, mean = vec[1])
   }
 
-  criterion <- function(dat, vec, y, ...){
+  executor <- function(dat, vec, y, ...){
     c(mean(dat), stats::sd(dat))
   }
 
@@ -297,7 +297,7 @@ test_that("simulation_generator can save", {
   df_param <- as.data.frame(matrix(1:len, nrow = len))
 
   ntrials <- 10
-  res <- simulator(rule, criterion, df_param, ntrials = ntrials,
+  res <- simulator(generator, executor, df_param, ntrials = ntrials,
                    specific_trials = NA, cores = 2, shuffle_group = NA,
                    filepath = "tmp.RData", verbose = F)
 

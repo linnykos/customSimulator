@@ -1,20 +1,20 @@
 #' Simulation setup
 #'
-#' This function applies \code{rule} (which takes in parameter settings and outputs
-#' a synthetic dataset) and \code{criterion} (which takes a synthetic dataset and outputs
+#' This function applies \code{generator} (which takes in parameter settings and outputs
+#' a synthetic dataset) and \code{executor} (which takes a synthetic dataset and outputs
 #' the results from estimators) to all the rows of \code{df_param} (which is a matrix
 #' that contains different parameter settings for each row). The distinction between
-#' \code{rule} and \code{criterion} is only made by the user, as the user can design
+#' \code{generator} and \code{executor} is only made by the user, as the user can design
 #' exactly the same simulation that uses one but not the other.
 #'
-#' The input to \code{rule} must be a vector (a row from \code{df_param}), while
-#' the input to \code{criterion} must be first the output of \code{rule} and second
+#' The input to \code{generator} must be a vector (a row from \code{df_param}), while
+#' the input to \code{executor} must be first the output of \code{generator} and second
 #' a vector (the same row from \code{df_param}). Both these functions is allowed
 #' to output lists.
 #'
 #' The output to \code{simulator} is a list, one element for each
 #' row of \code{df_param}. Each element of the list is typically a list or
-#' a matrix. This depends on how the user set up what \code{criterion} returns.
+#' a matrix. This depends on how the user set up what \code{executor} returns.
 #'
 #' The function has a \code{tryCatch} call, so if an error happens, the result for that
 #' trial and row of \code{df_param} will be an \code{NA}.
@@ -25,8 +25,8 @@
 #' \code{simulator} will save the results of every row of \code{df_param} there
 #' as it runs the simulations.
 #'
-#' @param rule function
-#' @param criterion function
+#' @param generator function
+#' @param executor function
 #' @param df_param data frame
 #' @param ntrials number of trials for each row
 #' @param specific_trials vector of integers of specific trials to run
@@ -39,14 +39,15 @@
 #' \code{cores>1}. See documentation in \url{https://cran.r-project.org/web/packages/future.apply/future.apply.pdf}
 #' @param filepath string
 #' @param verbose boolean
+#' @param ... extra parameters for \code{rule} and \code{criterion}
 #'
 #' @return list
 #' @export
-simulator <- function(rule, criterion, df_param,
+simulator <- function(generator, executor, df_param,
                       ntrials = 10, specific_trials = NA, cores = 1,
                       shuffle_group = NA, chunking_num = nrow(df_param),
                       required_packages = NULL,
-                      filepath = NA, verbose = T){
+                      filepath = NA, verbose = T, ...){
   stopifnot(is.data.frame(df_param), is.numeric(cores), cores > 0)
 
   # construct the scheduler
@@ -76,16 +77,16 @@ simulator <- function(rule, criterion, df_param,
 
   # function for each trial and row of df_param
   # the random seed is handled by future.seed in future_lapply
-  fun <- function(i, df_schedule, rule, criterion, pb, ...){
+  fun <- function(i, df_schedule, generator, executor, pb, ...){
     x <- df_schedule$row[i]
     y <- df_schedule$trial[i]
     set.seed(y)
 
     tryCatch({
       if(verbose) pb()
-      dat <- rule(df_param[x,], ...)
+      dat <- generator(df_param[x,], ...)
       start_time <- proc.time()
-      res <- criterion(dat, df_param[x,], y, ...)
+      res <- executor(dat, df_param[x,], y, ...)
       end_time <- proc.time()
 
       res <- list(result = res)
@@ -111,17 +112,17 @@ simulator <- function(rule, criterion, df_param,
 
       # parallel version
       res_tmp <- future.apply::future_lapply(chunking_list[[k]], function(i){
-        fun(i, df_schedule, rule, criterion, pb)
-      }, future.globals = list(rule = rule, criterion = criterion,
+        fun(i, df_schedule, generator, executor, pb, ...)
+      }, future.globals = list(generator = generator, executor = executor,
                                df_param = df_param, df_schedule = df_schedule,
-                               verbose = verbose),
+                               pb = pb, verbose = verbose, ...),
       future.packages = required_packages, future.seed = TRUE)
 
     } else {
       # sequential version
       if(verbose) pbapply::pboptions(type = "timer") else pbapply::pboptions(type = "none")
       res_tmp <- pbapply::pblapply(chunking_list[[k]], function(i){
-        fun(i, df_schedule, rule, criterion, pb)
+        fun(i, df_schedule, generator, executor, pb, ...)
       })
     }
 
